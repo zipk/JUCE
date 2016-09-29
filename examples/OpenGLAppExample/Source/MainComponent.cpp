@@ -432,7 +432,7 @@ private:
 
         // This method calls openGL functions to tell the GPU that some attributes will be used
         // for each vertex (see comments below) and will be passed as an array of data
-        void enable (OpenGLContext& openGLContext)
+        void enable (OpenGLContext& anOpenGLContext)
         {
             if (position != nullptr)
             {
@@ -442,8 +442,8 @@ private:
                 // 4th parameter indicates they will be left as is (not normalized)
                 // 5th parameter indicates the size of the array defined for each stored element (vertex)
                 // 6th parameter is the offset in that array for the given attribute in current element
-                openGLContext.extensions.glVertexAttribPointer (position->attributeID, 3, GL_FLOAT, GL_FALSE, sizeof (Vertex), 0);
-                openGLContext.extensions.glEnableVertexAttribArray (position->attributeID);
+				anOpenGLContext.extensions.glVertexAttribPointer (position->attributeID, 3, GL_FLOAT, GL_FALSE, sizeof (Vertex), 0);
+				anOpenGLContext.extensions.glEnableVertexAttribArray (position->attributeID);
             }
 
             if (normal != nullptr)
@@ -454,8 +454,8 @@ private:
                 // 4th parameter indicates they will be left as is (not normalized)
                 // 5th parameter indicates the size of the array defined for each stored element (vertex)
                 // 6th parameter is the byte offset in that array for the given attribute in current element (0+3 float)
-                openGLContext.extensions.glVertexAttribPointer (normal->attributeID, 3, GL_FLOAT, GL_FALSE, sizeof (Vertex), (GLvoid*) (sizeof (float) * 3));
-                openGLContext.extensions.glEnableVertexAttribArray (normal->attributeID);
+				anOpenGLContext.extensions.glVertexAttribPointer (normal->attributeID, 3, GL_FLOAT, GL_FALSE, sizeof (Vertex), (GLvoid*) (sizeof (float) * 3));
+				anOpenGLContext.extensions.glEnableVertexAttribArray (normal->attributeID);
             }
 
             if (sourceColour != nullptr)
@@ -466,8 +466,8 @@ private:
                 // 4th parameter indicates they will be left as is (not normalized)
                 // 5th parameter indicates the size of the array defined for each stored element (vertex)
                 // 6th parameter is the byte offset in that array for the given attribute in current element (0+3+3 float)
-                openGLContext.extensions.glVertexAttribPointer (sourceColour->attributeID, 4, GL_FLOAT, GL_FALSE, sizeof (Vertex), (GLvoid*) (sizeof (float) * 6));
-                openGLContext.extensions.glEnableVertexAttribArray (sourceColour->attributeID);
+				anOpenGLContext.extensions.glVertexAttribPointer (sourceColour->attributeID, 4, GL_FLOAT, GL_FALSE, sizeof (Vertex), (GLvoid*) (sizeof (float) * 6));
+				anOpenGLContext.extensions.glEnableVertexAttribArray (sourceColour->attributeID);
             }
 
             if (textureCoordIn != nullptr)
@@ -478,18 +478,18 @@ private:
                 // 4th parameter indicates they will be left as is (not normalized)
                 // 5th parameter indicates the size of the array defined for each stored element (vertex)
                 // 6th parameter is the byte offset in that array for the given attribute in current element (0+3+3+4 float)
-                openGLContext.extensions.glVertexAttribPointer (textureCoordIn->attributeID, 2, GL_FLOAT, GL_FALSE, sizeof (Vertex), (GLvoid*) (sizeof (float) * 10));
-                openGLContext.extensions.glEnableVertexAttribArray (textureCoordIn->attributeID);
+				anOpenGLContext.extensions.glVertexAttribPointer (textureCoordIn->attributeID, 2, GL_FLOAT, GL_FALSE, sizeof (Vertex), (GLvoid*) (sizeof (float) * 10));
+				anOpenGLContext.extensions.glEnableVertexAttribArray (textureCoordIn->attributeID);
             }
         }
 
         // This method calls openGL functions to tell the GPU to release the resources previously used to store attributes
-        void disable (OpenGLContext& openGLContext)
+        void disable (OpenGLContext& anOpenGLContext)
         {
-            if (position != nullptr)       openGLContext.extensions.glDisableVertexAttribArray (position->attributeID);
-            if (normal != nullptr)         openGLContext.extensions.glDisableVertexAttribArray (normal->attributeID);
-            if (sourceColour != nullptr)   openGLContext.extensions.glDisableVertexAttribArray (sourceColour->attributeID);
-            if (textureCoordIn != nullptr)  openGLContext.extensions.glDisableVertexAttribArray (textureCoordIn->attributeID);
+            if (position != nullptr)       anOpenGLContext.extensions.glDisableVertexAttribArray (position->attributeID);
+            if (normal != nullptr)         anOpenGLContext.extensions.glDisableVertexAttribArray (normal->attributeID);
+            if (sourceColour != nullptr)   anOpenGLContext.extensions.glDisableVertexAttribArray (sourceColour->attributeID);
+            if (textureCoordIn != nullptr)  anOpenGLContext.extensions.glDisableVertexAttribArray (textureCoordIn->attributeID);
         }
 
         ScopedPointer<OpenGLShaderProgram::Attribute> position, normal, sourceColour, textureCoordIn;
@@ -572,7 +572,7 @@ private:
         }
 
         // Send the buffer to the GPU to execute the vertex shader
-        void draw (OpenGLContext& openGLContext, Attributes& glAttributes)
+        void draw (OpenGLContext& anOpenGLContext, Attributes& glAttributes)
         {
             // Only one buffer used in this example (vertexBuffers.size() = 1)
             for (int i = 0; i < vertexBuffers.size(); ++i)
@@ -581,9 +581,9 @@ private:
                 // Tell the GPU this is the buffer to be used
                 vertexBuffer.bind();
 
-                glAttributes.enable (openGLContext);
+                glAttributes.enable (anOpenGLContext);
                 glDrawElements (GL_TRIANGLES, vertexBuffer.numIndices, GL_UNSIGNED_INT, 0);
-                glAttributes.disable (openGLContext);
+                glAttributes.disable (anOpenGLContext);
             }
         }
 
