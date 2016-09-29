@@ -59,6 +59,8 @@ Project::Project (const File& f)
     setChangedFlag (false);
 
     projectRoot.addListener (this);
+
+    modificationTime = getFile().getLastModificationTime();
 }
 
 Project::~Project()
@@ -127,7 +129,7 @@ void Project::setMissingDefaultValues()
     if (getBundleIdentifier().toString().isEmpty())
         getBundleIdentifier() = getDefaultBundleIdentifier();
 
-    if (shouldIncludeBinaryInAppConfig() == var::null)
+    if (shouldIncludeBinaryInAppConfig() == var())
         shouldIncludeBinaryInAppConfig() = true;
 
     ProjucerApplication::getApp().updateNewlyOpenedProject (*this);
@@ -375,6 +377,20 @@ void Project::valueTreeChildOrderChanged (ValueTree&, int, int)     { changed();
 void Project::valueTreeParentChanged (ValueTree&)                   {}
 
 //==============================================================================
+bool Project::hasProjectBeenModified()
+{
+    Time newModificationTime = getFile().getLastModificationTime();
+
+    if (newModificationTime != modificationTime)
+    {
+        modificationTime = newModificationTime;
+        return true;
+    }
+
+    return false;
+}
+
+//==============================================================================
 File Project::resolveFilename (String filename) const
 {
     if (filename.isEmpty())
@@ -469,10 +485,10 @@ void Project::createPropertyEditors (PropertyListBuilder& props)
         Array<var> maxSizeCodes;
 
         maxSizeNames.add (TRANS("Default"));
-        maxSizeCodes.add (var::null);
+        maxSizeCodes.add (var());
 
-        maxSizeNames.add (String::empty);
-        maxSizeCodes.add (var::null);
+        maxSizeNames.add (String());
+        maxSizeCodes.add (var());
 
         for (int i = 0; i < numElementsInArray (maxSizes); ++i)
         {
@@ -1121,9 +1137,12 @@ String Project::getAUMainTypeString()
 
     if (s.isEmpty())
     {
-        if (getPluginIsSynth().getValue())              s = "kAudioUnitType_MusicDevice";
-        else if (getPluginWantsMidiInput().getValue())  s = "kAudioUnitType_MusicEffect";
-        else                                            s = "kAudioUnitType_Effect";
+        // Unfortunately, Rez uses a header where kAudioUnitType_MIDIProcessor is undefined
+        // Use aumi instead.
+        if      (getPluginIsMidiEffectPlugin().getValue()) s = "'aumi'";
+        else if (getPluginIsSynth().getValue())            s = "kAudioUnitType_MusicDevice";
+        else if (getPluginWantsMidiInput().getValue())     s = "kAudioUnitType_MusicEffect";
+        else                                               s = "kAudioUnitType_Effect";
     }
 
     return s;
@@ -1212,15 +1231,13 @@ void Project::createExporterForCurrentPlatform()
 String Project::getFileTemplate (const String& templateName)
 {
     int dataSize;
-    const char* data = BinaryData::getNamedResource (templateName.toUTF8(), dataSize);
 
-    if (data == nullptr)
-    {
-        jassertfalse;
-        return String::empty;
-    }
+    if (const char* data = BinaryData::getNamedResource (templateName.toUTF8(), dataSize))
+        return String::fromUTF8 (data, dataSize);
 
-    return String::fromUTF8 (data, dataSize);
+    jassertfalse;
+    return String();
+
 }
 
 //==============================================================================

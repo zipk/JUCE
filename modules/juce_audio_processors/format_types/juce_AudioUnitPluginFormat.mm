@@ -39,6 +39,20 @@
  #include <AudioUnit/AudioUnitCarbonView.h>
 #endif
 
+#ifndef JUCE_SUPPORTS_AUv3
+ #if JUCE_COMPILER_SUPPORTS_VARIADIC_TEMPLATES && __OBJC2__  \
+      &&  ((defined (MAC_OS_X_VERSION_MIN_REQUIRED)    && defined (MAC_OS_X_VERSION_10_11) && (MAC_OS_X_VERSION_MIN_REQUIRED    >= MAC_OS_X_VERSION_10_11)) \
+       ||  (defined (__IPHONE_OS_VERSION_MIN_REQUIRED) && defined (__IPHONE_9_0)           && (__IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_9_0)))
+  #define JUCE_SUPPORTS_AUv3 1
+ #else
+  #define JUCE_SUPPORTS_AUv3 0
+ #endif
+#endif
+
+#if JUCE_SUPPORTS_AUv3
+ #include <CoreAudioKit/AUViewController.h>
+#endif
+
 namespace juce
 {
 
@@ -59,14 +73,6 @@ namespace juce
  #define JUCE_AU_LOG(a) Logger::writeToLog(a);
 #else
  #define JUCE_AU_LOG(a)
-#endif
-
-#ifndef JUCE_SUPPORTS_AUv3
- #if JUCE_COMPILER_SUPPORTS_VARIADIC_TEMPLATES
-  #define JUCE_SUPPORTS_AUv3 1
- #else
-  #define JUCE_SUPPORTS_AUv3 0
- #endif
 #endif
 
 namespace AudioUnitFormatHelpers
@@ -336,48 +342,53 @@ public:
         jassert (AudioUnitFormatHelpers::insideCallback.get() == 0);
        #endif
 
-      #if JUCE_MAC
-        if (eventListenerRef != 0)
-        {
-            AUListenerDispose (eventListenerRef);
-            eventListenerRef = 0;
-        }
-      #endif
-
         if (audioUnit != nullptr)
         {
-            if (prepared)
-                releaseResources();
-
             struct AUDeleter : public CallbackMessage
             {
-                AUDeleter (AudioComponentInstance& inInstance, WaitableEvent& inEvent)
+                AUDeleter (AudioUnitPluginInstance& inInstance, WaitableEvent& inEvent)
                     : auInstance (inInstance), completionSignal (inEvent)
                 {}
 
                 void messageCallback() override
                 {
-                    AudioComponentInstanceDispose (auInstance);
-                    auInstance = nullptr;
+                    auInstance.cleanup();
                     completionSignal.signal();
                 }
 
-                AudioComponentInstance& auInstance;
+                AudioUnitPluginInstance& auInstance;
                 WaitableEvent& completionSignal;
             };
 
             if (MessageManager::getInstance()->isThisTheMessageThread())
             {
-                AudioComponentInstanceDispose (audioUnit);
-                audioUnit = nullptr;
+                cleanup();
             }
             else
             {
                 WaitableEvent completionEvent;
-                (new AUDeleter (audioUnit, completionEvent))->post();
+                (new AUDeleter (*this, completionEvent))->post();
                 completionEvent.wait();
             }
         }
+    }
+
+    // called from the destructer above
+    void cleanup()
+    {
+       #if JUCE_MAC
+        if (eventListenerRef != 0)
+        {
+            AUListenerDispose (eventListenerRef);
+            eventListenerRef = 0;
+        }
+       #endif
+
+        if (prepared)
+            releaseResources();
+
+        AudioComponentInstanceDispose (audioUnit);
+        audioUnit = nullptr;
     }
 
     bool initialise (double rate, int blockSize)
@@ -388,18 +399,7 @@ public:
                               (int) (numOutputBusChannels * numOutputBusses),
                               rate, blockSize);
         setLatencySamples (0);
-
-        if (parameters.size() == 0)
-        {
-            // some plugins crash if initialiseAudioUnit() is called too soon (sigh..), so we'll
-            // only call it here if it seems like they it's one of the awkward plugins that can
-            // only create their parameters after it has been initialised.
-            if (! initialiseAudioUnit())
-                return false;
-
-            refreshParameterList();
-        }
-
+        refreshParameterList();
         setPluginCallbacks();
         return true;
     }
@@ -521,7 +521,7 @@ public:
             resetBusses();
 
             jassert (! prepared);
-            initialiseAudioUnit();
+            prepared = (AudioUnitInitialize (audioUnit) == noErr);
         }
     }
 
@@ -539,14 +539,6 @@ public:
         }
 
         incomingMidi.clear();
-    }
-
-    bool initialiseAudioUnit()
-    {
-        if (! prepared)
-            prepared = (AudioUnitInitialize (audioUnit) == noErr);
-
-        return prepared;
     }
 
     void resetBusses()
@@ -862,8 +854,6 @@ public:
 
         if (propertyList != 0)
         {
-            initialiseAudioUnit();
-
             AudioUnitSetProperty (audioUnit, kAudioUnitProperty_ClassInfo, kAudioUnitScope_Global,
                                   0, &propertyList, sizeof (propertyList));
 
@@ -1061,7 +1051,6 @@ private:
         event.mEventType = kAudioUnitEvent_PropertyChange;
         event.mArgument.mProperty.mPropertyID = type;
         event.mArgument.mProperty.mAudioUnit = audioUnit;
-        event.mArgument.mProperty.mPropertyID = kAudioUnitProperty_PresentPreset;
         event.mArgument.mProperty.mScope = kAudioUnitScope_Global;
         event.mArgument.mProperty.mElement = 0;
         AUEventListenerAddEventType (eventListenerRef, nullptr, &event);
@@ -1069,28 +1058,39 @@ private:
 
     void eventCallback (const AudioUnitEvent& event, AudioUnitParameterValue newValue)
     {
+        int paramIndex = -1;
+
+        if (event.mEventType == kAudioUnitEvent_ParameterValueChange
+         || event.mEventType == kAudioUnitEvent_BeginParameterChangeGesture
+         || event.mEventType == kAudioUnitEvent_EndParameterChangeGesture)
+        {
+            for (paramIndex = 0; paramIndex < parameters.size(); ++paramIndex)
+            {
+                const ParamInfo& p = *parameters.getUnchecked(paramIndex);
+
+                if (p.paramID == event.mArgument.mParameter.mParameterID)
+                    break;
+            }
+
+            if (! isPositiveAndBelow (paramIndex, parameters.size()))
+                return;
+        }
+
         switch (event.mEventType)
         {
             case kAudioUnitEvent_ParameterValueChange:
-                for (int i = 0; i < parameters.size(); ++i)
                 {
-                    const ParamInfo& p = *parameters.getUnchecked(i);
-
-                    if (p.paramID == event.mArgument.mParameter.mParameterID)
-                    {
-                        sendParamChangeMessageToListeners (i, (newValue - p.minValue) / (p.maxValue - p.minValue));
-                        break;
-                    }
+                    const ParamInfo& p = *parameters.getUnchecked(paramIndex);
+                    sendParamChangeMessageToListeners (paramIndex, (newValue - p.minValue) / (p.maxValue - p.minValue));
                 }
-
                 break;
 
             case kAudioUnitEvent_BeginParameterChangeGesture:
-                beginParameterChangeGesture ((int) event.mArgument.mParameter.mParameterID);
+                beginParameterChangeGesture (paramIndex);
                 break;
 
             case kAudioUnitEvent_EndParameterChangeGesture:
-                endParameterChangeGesture ((int) event.mArgument.mParameter.mParameterID);
+                endParameterChangeGesture (paramIndex);
                 break;
 
             default:
@@ -1516,7 +1516,7 @@ private:
     AutoResizingNSViewComponent wrapper;
 
    #if JUCE_SUPPORTS_AUv3
-    typedef void (^ViewControllerCallbackBlock)(NSViewController *);
+    typedef void (^ViewControllerCallbackBlock)(AUViewControllerBase *);
     ObjCBlock<ViewControllerCallbackBlock> viewControllerCallback;
    #endif
 
@@ -1524,9 +1524,6 @@ private:
 
     bool createView (const bool createGenericViewIfNeeded)
     {
-        if (! plugin.initialiseAudioUnit())
-            return false;
-
         JUCE_IOS_MAC_VIEW* pluginView = nil;
         UInt32 dataSize = 0;
         Boolean isWritable = false;
@@ -1617,7 +1614,7 @@ private:
     }
 
    #if JUCE_SUPPORTS_AUv3
-    void requestViewControllerCallback (NSViewController* controller)
+    void requestViewControllerCallback (AUViewControllerBase* controller)
     {
         auto nsSize = [controller preferredContentSize];
         auto viewSize = CGSizeMake (nsSize.width, nsSize.height);
@@ -2008,6 +2005,8 @@ StringArray AudioUnitPluginFormat::searchPathsForPlugins (const FileSearchPath&,
              || desc.componentType == kAudioUnitType_Generator
              || desc.componentType == kAudioUnitType_Panner)
         {
+            ignoreUnused (allowPluginsWhichRequireAsynchronousInstantiation);
+
           #if JUCE_SUPPORTS_AUv3
             bool isAUv3 = ((desc.componentFlags & kAudioComponentFlag_IsV3AudioUnit) != 0);
 

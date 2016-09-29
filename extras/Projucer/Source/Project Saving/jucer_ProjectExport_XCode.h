@@ -29,7 +29,7 @@ namespace
 {
     const char* const osxVersionDefault         = "default";
     const int oldestSDKVersion  = 5;
-    const int currentSDKVersion = 11;
+    const int currentSDKVersion = 12;
 
     const char* const osxArch_Default           = "default";
     const char* const osxArch_Native            = "Native";
@@ -374,8 +374,8 @@ protected:
 
             if (iOS)
             {
-                const char* iosVersions[]      = { "Use Default",     "7.0", "7.1", "8.0", "8.1", "8.2", "8.3", "8.4", "9.0", "9.1", "9.2", "9.3", 0 };
-                const char* iosVersionValues[] = { osxVersionDefault, "7.0", "7.1", "8.0", "8.1", "8.2", "8.3", "8.4", "9.0", "9.1", "9.2", "9.3", 0 };
+                const char* iosVersions[]      = { "Use Default",     "7.0", "7.1", "8.0", "8.1", "8.2", "8.3", "8.4", "9.0", "9.1", "9.2", "9.3", "10.0", 0 };
+                const char* iosVersionValues[] = { osxVersionDefault, "7.0", "7.1", "8.0", "8.1", "8.2", "8.3", "8.4", "9.0", "9.1", "9.2", "9.3", "10.0", 0 };
 
                 props.add (new ChoicePropertyComponent (iosDeploymentTarget.getPropertyAsValue(), "iOS Deployment Target",
                                                         StringArray (iosVersions), Array<var> (iosVersionValues)),
@@ -419,7 +419,7 @@ protected:
 
             const char* cppLanguageStandardNames[] = { "Use Default", "C++98", "GNU++98", "C++11", "GNU++11", "C++14", "GNU++14", nullptr };
             Array<var> cppLanguageStandardValues;
-            cppLanguageStandardValues.add (var::null);
+            cppLanguageStandardValues.add (var());
             cppLanguageStandardValues.add ("c++98");
             cppLanguageStandardValues.add ("gnu++98");
             cppLanguageStandardValues.add ("c++11");
@@ -433,7 +433,7 @@ protected:
 
             const char* cppLibNames[] = { "Use Default", "LLVM libc++", "GNU libstdc++", nullptr };
             Array<var> cppLibValues;
-            cppLibValues.add (var::null);
+            cppLibValues.add (var());
             cppLibValues.add ("libc++");
             cppLibValues.add ("libstdc++");
 
@@ -550,7 +550,7 @@ public:
                     xcodeIsExecutable = true;
                     xcodeCreatePList = false;
                     xcodeFileType = "compiled.mach-o.executable";
-                    xcodeBundleExtension = String::empty;
+                    xcodeBundleExtension = String();
                     xcodeProductType = "com.apple.product-type.tool";
                     xcodeCopyToProductInstallPathAfterBuild = false;
                     break;
@@ -957,11 +957,16 @@ public:
                 const String sdk (config.osxSDKVersion.get());
                 const String sdkCompat (config.osxDeploymentTarget.get());
 
+                // if the user doesn't set it, then use the last known version that works well with JUCE
+                String deploymentTarget = "10.11";
+
                 for (int ver = oldestSDKVersion; ver <= currentSDKVersion; ++ver)
                 {
                     if (sdk == getSDKName (ver))         s.add ("SDKROOT = macosx10." + String (ver));
-                    if (sdkCompat == getSDKName (ver))   s.add ("MACOSX_DEPLOYMENT_TARGET = 10." + String (ver));
+                    if (sdkCompat == getSDKName (ver))   deploymentTarget = "10." + String (ver);
                 }
+
+                s.add ("MACOSX_DEPLOYMENT_TARGET = " + deploymentTarget);
 
                 s.add ("MACOSX_DEPLOYMENT_TARGET_ppc = 10.4");
                 s.add ("SDKROOT_ppc = macosx10.5");
@@ -1093,7 +1098,7 @@ public:
         void getLinkerSettings (const BuildConfiguration& config, StringArray& flags, StringArray& librarySearchPaths) const
         {
             if (xcodeIsBundle)
-                flags.add ("-bundle");
+                flags.add (owner.isiOS() ? "-bitcode_bundle" : "-bundle");
 
             const Array<RelativePath>& extraLibs = config.isDebug() ? xcodeExtraLibrariesDebug
                                                                     : xcodeExtraLibrariesRelease;
@@ -1593,9 +1598,9 @@ private:
 
                 if (! projectType.isStaticLibrary() && target.type != Target::SharedCodeTarget)
                     target.addBuildPhase ("PBXFrameworksBuildPhase", target.frameworkIDs);
-
-                target.addShellScriptBuildPhase ("Post-build script", getPostBuildScript());
             }
+
+            target.addShellScriptBuildPhase ("Post-build script", getPostBuildScript());
 
             if (project.getProjectType().isAudioPlugin() && project.shouldBuildAUv3().getValue()
                 && project.shouldBuildStandalone().getValue() && target.type == Target::StandalonePlugIn)
@@ -1661,11 +1666,8 @@ private:
         v->setProperty ("isa", target.type == Target::AggregateTarget ? "PBXAggregateTarget" : "PBXNativeTarget", nullptr);
         v->setProperty ("buildConfigurationList", createID (String ("__configList") + targetName), nullptr);
 
-        if (target.type != Target::AggregateTarget)
-        {
-            v->setProperty ("buildPhases", indentParenthesisedList (target.buildPhaseIDs), nullptr);
-            v->setProperty ("buildRules", "( )", nullptr);
-        }
+        v->setProperty ("buildPhases", indentParenthesisedList (target.buildPhaseIDs), nullptr);
+        v->setProperty ("buildRules", "( )", nullptr);
 
         v->setProperty ("dependencies", indentParenthesisedList (getTargetDependencies (target)), nullptr);
         v->setProperty (Ids::name, target.getXCodeSchemeName(), nullptr);
@@ -1950,6 +1952,8 @@ private:
             const String iosVersion (config.iosDeploymentTarget.get());
             if (iosVersion.isNotEmpty() && iosVersion != osxVersionDefault)
                 s.add ("IPHONEOS_DEPLOYMENT_TARGET = " + iosVersion);
+            else
+                s.add ("IPHONEOS_DEPLOYMENT_TARGET = 9.3");
         }
         else
         {
@@ -2194,7 +2198,7 @@ private:
         {
             const String fileType (getFileType (path));
 
-            if (shouldBeAddedToXcodeResources || fileType.startsWith ("image.") || fileType.startsWith ("text.") || fileType.startsWith ("file."))
+            if (shouldBeAddedToXcodeResources)
             {
                 resourceIDs.add (addBuildFile (pathAsString, refID, false, false));
                 resourceFileRefs.add (refID);
@@ -2204,20 +2208,23 @@ private:
         return refID;
     }
 
-    String addRezFile (const RelativePath& path) const
+    String addRezFile (const Project::Item& projectItem, const RelativePath& path) const
     {
         const String pathAsString (path.toUnixStyle());
         const String refID (addFileReference (path.toUnixStyle()));
 
-        Target* auTarget = getTargetOfType (Target::AudioUnitPlugIn);
+        if (projectItem.isModuleCode())
+        {
+            if (Target* xcodeTarget = getTargetOfType (getTargetTypeFromFilePath (projectItem.getFile(), false)))
+            {
+                String rezFileID = addBuildFile (pathAsString, refID, false, false, xcodeTarget);
+                xcodeTarget->rezFileIDs.add (rezFileID);
 
-        if (auTarget == nullptr)
-            return String();
+                return refID;
+            }
+        }
 
-        String rezFileID = addBuildFile (pathAsString, refID, false, false, auTarget);
-        auTarget->rezFileIDs.add (rezFileID);
-
-        return refID;
+        return String();
     }
 
     String getEntitlementsFileName() const
@@ -2270,25 +2277,12 @@ private:
             else
                 path = RelativePath (projectItem.getFile(), getTargetFolder(), RelativePath::buildTargetFolder);
 
-            if (path.hasFileExtension (".r") && LibraryModule::CompileUnit::hasSuffix (projectItem.getFile(), "_AU"))
-                return addRezFile (path);
+            if (path.hasFileExtension (".r"))
+                return addRezFile (projectItem, path);
 
             Target* xcodeTarget = nullptr;
             if (projectItem.isModuleCode() && projectItem.shouldBeCompiled())
-            {
-                const File& file = projectItem.getFile();
-
-                Target::Type targetType = Target::unspecified;
-                if      (LibraryModule::CompileUnit::hasSuffix (file, "_AU"))         targetType = Target::AudioUnitPlugIn;
-                else if (LibraryModule::CompileUnit::hasSuffix (file, "_AUv3"))       targetType = Target::AudioUnitv3PlugIn;
-                else if (LibraryModule::CompileUnit::hasSuffix (file, "_AAX"))        targetType = Target::AAXPlugIn;
-                else if (LibraryModule::CompileUnit::hasSuffix (file, "_RTAS"))       targetType = Target::RTASPlugIn;
-                else if (LibraryModule::CompileUnit::hasSuffix (file, "_VST2"))       targetType = Target::VSTPlugIn;
-                else if (LibraryModule::CompileUnit::hasSuffix (file, "_VST3"))       targetType = Target::VST3PlugIn;
-                else if (LibraryModule::CompileUnit::hasSuffix (file, "_Standalone")) targetType = Target::StandalonePlugIn;
-
-                xcodeTarget = getTargetOfType (targetType);
-            }
+                xcodeTarget = getTargetOfType (getTargetTypeFromFilePath (projectItem.getFile(), false));
 
             return addFile (path, projectItem.shouldBeCompiled(),
                             projectItem.shouldBeAddedToBinaryResources(),
@@ -2390,6 +2384,19 @@ private:
         String targetString = "(" + targetIDs.joinIntoString (", ") + ")";
         v->setProperty ("targets", targetString, nullptr);
         misc.add (v);
+    }
+
+    static Target::Type getTargetTypeFromFilePath (const File& file, bool returnSharedTargetIfNoValidSuffic)
+    {
+        if      (LibraryModule::CompileUnit::hasSuffix (file, "_AU"))         return Target::AudioUnitPlugIn;
+        else if (LibraryModule::CompileUnit::hasSuffix (file, "_AUv3"))       return Target::AudioUnitv3PlugIn;
+        else if (LibraryModule::CompileUnit::hasSuffix (file, "_AAX"))        return Target::AAXPlugIn;
+        else if (LibraryModule::CompileUnit::hasSuffix (file, "_RTAS"))       return Target::RTASPlugIn;
+        else if (LibraryModule::CompileUnit::hasSuffix (file, "_VST2"))       return Target::VSTPlugIn;
+        else if (LibraryModule::CompileUnit::hasSuffix (file, "_VST3"))       return Target::VST3PlugIn;
+        else if (LibraryModule::CompileUnit::hasSuffix (file, "_Standalone")) return Target::StandalonePlugIn;
+
+        return (returnSharedTargetIfNoValidSuffic ? Target::SharedCodeTarget : Target::unspecified);
     }
 
     //==============================================================================
@@ -2706,7 +2713,6 @@ private:
 
     void initialiseDependencyPathValues()
     {
-        vst2Path.referTo (Value (new DependencyPathValueSource (getSetting (Ids::vstFolder),  Ids::vst2Path, TargetOS::osx)));
         vst3Path.referTo (Value (new DependencyPathValueSource (getSetting (Ids::vst3Folder), Ids::vst3Path, TargetOS::osx)));
         aaxPath. referTo (Value (new DependencyPathValueSource (getSetting (Ids::aaxFolder),  Ids::aaxPath,  TargetOS::osx)));
         rtasPath.referTo (Value (new DependencyPathValueSource (getSetting (Ids::rtasFolder), Ids::rtasPath, TargetOS::osx)));

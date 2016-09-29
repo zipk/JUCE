@@ -1783,6 +1783,9 @@
     <ClCompile Include="..\..\..\..\..\modules\juce_gui_basics\layout\juce_ConcertinaPanel.cpp">
       <Filter>Juce Modules\juce_gui_basics\layout</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\..\modules\juce_gui_basics\layout\juce_FlexBox.cpp">
+      <Filter>Juce Modules\juce_gui_basics\layout</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\..\..\..\modules\juce_gui_basics\layout\juce_GroupComponent.cpp">
       <Filter>Juce Modules\juce_gui_basics\layout</Filter>
     </ClCompile>
@@ -2676,6 +2679,9 @@
     <ClInclude Include="..\..\..\..\..\modules\juce_audio_formats\juce_audio_formats.h">
       <Filter>Juce Modules\juce_audio_formats</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\..\modules\juce_audio_plugin_client\AAX\juce_AAX_Modifier_Injector.h">
+      <Filter>Juce Modules\juce_audio_plugin_client\AAX</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\..\..\..\modules\juce_audio_plugin_client\AU\CoreAudioUtilityClasses\AUBase.h">
       <Filter>Juce Modules\juce_audio_plugin_client\AU\CoreAudioUtilityClasses</Filter>
     </ClInclude>
@@ -2842,6 +2848,9 @@
       <Filter>Juce Modules\juce_audio_processors\format_types</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\modules\juce_audio_processors\format_types\juce_VST3PluginFormat.h">
+      <Filter>Juce Modules\juce_audio_processors\format_types</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\modules\juce_audio_processors\format_types\juce_VSTInterface.h">
       <Filter>Juce Modules\juce_audio_processors\format_types</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\modules\juce_audio_processors\format_types\juce_VSTMidiEventList.h">
@@ -3762,6 +3771,12 @@
     <ClInclude Include="..\..\..\..\..\modules\juce_gui_basics\layout\juce_ConcertinaPanel.h">
       <Filter>Juce Modules\juce_gui_basics\layout</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\..\modules\juce_gui_basics\layout\juce_FlexBox.h">
+      <Filter>Juce Modules\juce_gui_basics\layout</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\modules\juce_gui_basics\layout\juce_FlexItem.h">
+      <Filter>Juce Modules\juce_gui_basics\layout</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\..\..\..\modules\juce_gui_basics\layout\juce_GroupComponent.h">
       <Filter>Juce Modules\juce_gui_basics\layout</Filter>
     </ClInclude>
@@ -4163,8 +4178,11 @@
     <None Include="..\..\..\..\..\modules\juce_audio_plugin_client\AU\AUResources.r">
       <Filter>Juce Modules\juce_audio_plugin_client\AU</Filter>
     </None>
-    <None Include="..\..\..\..\..\modules\juce_audio_plugin_client\AU\juce_RezResources_AU.r">
-      <Filter>Juce Modules\juce_audio_plugin_client\AU</Filter>
+    <None Include="..\..\..\..\..\modules\juce_audio_plugin_client\juce_audio_plugin_client_AU.r">
+      <Filter>Juce Modules\juce_audio_plugin_client</Filter>
+    </None>
+    <None Include="..\..\..\..\..\modules\juce_audio_plugin_client\juce_audio_plugin_client_RTAS.r">
+      <Filter>Juce Modules\juce_audio_plugin_client</Filter>
     </None>
     <None Include="..\..\..\..\..\modules\juce_graphics\image_formats\jpglib\changes to libjpeg for JUCE.txt">
       <Filter>Juce Modules\juce_graphics\image_formats\jpglib</Filter>

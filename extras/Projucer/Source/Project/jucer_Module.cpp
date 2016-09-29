@@ -328,7 +328,7 @@ void LibraryModule::addSettingsForModuleToExporter (ProjectExporter& exporter, P
         XCodeProjectExporter& xcodeExporter = dynamic_cast<XCodeProjectExporter&> (exporter);
 
         if (project.isAUPluginHost())
-            xcodeExporter.xcodeFrameworks.addTokens ("AudioUnit CoreAudioKit", false);
+            xcodeExporter.xcodeFrameworks.addTokens (xcodeExporter.isOSX() ? "AudioUnit CoreAudioKit" : "CoreAudioKit", false);
 
         const String frameworks (moduleInfo.moduleInfo [xcodeExporter.isOSX() ? "OSXFrameworks" : "iOSFrameworks"].toString());
         xcodeExporter.xcodeFrameworks.addTokens (frameworks, ", ", StringRef());
@@ -338,6 +338,7 @@ void LibraryModule::addSettingsForModuleToExporter (ProjectExporter& exporter, P
     else if (exporter.isLinux())
     {
         parseAndAddLibs (exporter.linuxLibs, moduleInfo.moduleInfo ["linuxLibs"].toString());
+        parseAndAddLibs (exporter.linuxPackages, moduleInfo.moduleInfo ["linuxPackages"].toString());
     }
     else if (exporter.isCodeBlocks() && exporter.isWindows())
     {
@@ -601,12 +602,6 @@ File EnabledModuleList::findLocalModuleFolder (const String& moduleID, bool useE
 
                     if (ModuleDescription (f).isValid())
                         return f;
-
-                    f = moduleFolder.getChildFile ("modules")
-                                    .getChildFile (moduleID);
-
-                    if (ModuleDescription (f).isValid())
-                        return f;
                 }
             }
         }
@@ -766,7 +761,7 @@ void EnabledModuleList::addModuleFromUserSelectedFile()
 {
     static File lastLocation (findDefaultModulesFolder (project));
 
-    FileChooser fc ("Select a module to add...", lastLocation, String::empty, false);
+    FileChooser fc ("Select a module to add...", lastLocation, String(), false);
 
     if (fc.browseForDirectory())
     {
