@@ -1,0 +1,27 @@
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 14
+VisualStudioVersion = 14.0.24720.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{3AF5984B-1995-D9AA-6A48-A11A7E29B8ED}") = "OpenGLAppExample", "OpenGLAppExample.vcxproj", "{7C7408CA-ACB1-2C65-426D-235C519770A9}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Debug|x64 = Debug|x64
+		Release|Win32 = Release|Win32
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7C7408CA-ACB1-2C65-426D-235C519770A9}.Debug|Win32.ActiveCfg = Debug|Win32
+		{7C7408CA-ACB1-2C65-426D-235C519770A9}.Debug|Win32.Build.0 = Debug|Win32
+		{7C7408CA-ACB1-2C65-426D-235C519770A9}.Debug|x64.ActiveCfg = Debug|x64
+		{7C7408CA-ACB1-2C65-426D-235C519770A9}.Debug|x64.Build.0 = Debug|x64
+		{7C7408CA-ACB1-2C65-426D-235C519770A9}.Release|Win32.ActiveCfg = Release|Win32
+		{7C7408CA-ACB1-2C65-426D-235C519770A9}.Release|Win32.Build.0 = Release|Win32
+		{7C7408CA-ACB1-2C65-426D-235C519770A9}.Release|x64.ActiveCfg = Release|x64
+		{7C7408CA-ACB1-2C65-426D-235C519770A9}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
