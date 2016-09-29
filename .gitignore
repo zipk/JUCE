@@ -54,3 +54,5 @@ profile
 **/Builds/AndroidStudio
 doxygen/doc
 extras/Projucer/JUCECompileEngine.dylib
+**/bin
+**/obj
